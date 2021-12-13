@@ -14,15 +14,15 @@ class Scraper(ABC):
         pass
 
     @abstractmethod
-    def get_chapters(self, url: str) -> list:
+    def get_manga_info(self, url: str) -> dict:
         '''
-        Retrieves the chapter links of the given manga URL.
+        Retrieves information about a Manga from the given manga URL.
 
         Args:
             url (str): The URL of the manga page.
 
         Returns:
-            list: A list of URLs of each chapter of a manga.
+            dict: Information about a manga.
         '''
         pass
 
