@@ -180,6 +180,9 @@ class MangaDLConsole(cmd.Cmd):
                     os.path.sep,
                     chapter['title']
                 )
+                if os.path.isfile('{}.cbz'.format(chapter_folder)):
+                    print('\033[32m{} is complete\033[0m'.format(chapter['title']))
+                    continue
                 chapter['pages'] = self.scraper.get_chapter_images(chapter['source'])
                 page_sources = list(map(lambda x: x['source'], chapter['pages']))
                 failed_downloads = io_helper.download_files(page_sources, chapter_folder)
@@ -191,6 +194,7 @@ class MangaDLConsole(cmd.Cmd):
                 if len(failed_downloads) == 0:
                     io_helper.compress_folder_as_cbz(chapter_folder)
                     shutil.rmtree(chapter_folder)
+                    print('\033[32m{} is complete\033[0m'.format(chapter['title']))
                 else:
                     print('\033[33m{} is incomplete\033[0m'.format(chapter['title']))
 
@@ -239,4 +243,4 @@ class MangaDLConsole(cmd.Cmd):
 
 
 if __name__ == '__main__':
-    MangaDLConsole().cmdloop()
+    asyncio.run(MangaDLConsole().cmdloop())
