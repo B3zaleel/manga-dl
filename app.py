@@ -7,6 +7,7 @@ import asyncio
 import shlex
 import shutil
 import json
+import threading
 
 import io_helper
 from scraper import Scraper
@@ -155,6 +156,35 @@ class MangaDLConsole(cmd.Cmd):
         if len(error) > 0:
             print('\033[31mError:\033[0m {}'.format(error))
 
+    def download_chapters_task(self, cwd, scraper_id, manga_title, chapters):
+        scraper = self.scrapers[scraper_id]()
+        for chapter in chapters:
+            try:
+                chapter_folder = '{}{}{}{}{}'.format(
+                    cwd,
+                    '' if cwd.endswith(os.path.sep) else os.path.sep,
+                    manga_title,
+                    os.path.sep,
+                    chapter['title']
+                )
+                if os.path.isfile('{}.cbz'.format(chapter_folder)):
+                    # print('\033[32m{} is complete\033[0m'.format(chapter['title']))
+                    continue
+                chapter['pages'] = scraper.get_chapter_images(chapter['source'])
+                page_sources = list(map(lambda x: x['source'], chapter['pages']))
+                failed_downloads = io_helper.download_files(page_sources, chapter_folder)
+                for page in chapter['pages']:
+                    page['saved'] = page['source'] not in failed_downloads
+                if len(failed_downloads) == 0:
+                    io_helper.compress_folder_as_cbz(chapter_folder)
+                    shutil.rmtree(chapter_folder)
+                    # print('\033[32m{} is complete\033[0m'.format(chapter['title']))
+                # else:
+                #     print('\033[33m{} is incomplete\033[0m'.format(chapter['title']))
+            except Exception as ex:
+                # log error
+                continue
+
     def do_download_chapters(self, line: str):
         '''Downloads chapters of the current manga.
         Usage: download_chapters [all|chapter_title ...]
@@ -172,31 +202,20 @@ class MangaDLConsole(cmd.Cmd):
                 for chapter in manga_info['chapters']:
                     if chapter['title'] in arg0:
                         chapters.append(chapter)
-            for chapter in chapters:
-                chapter_folder = '{}{}{}{}{}'.format(
-                    self.cwd,
-                    '' if self.cwd.endswith(os.path.sep) else os.path.sep,
-                    self.manga,
-                    os.path.sep,
-                    chapter['title']
-                )
-                if os.path.isfile('{}.cbz'.format(chapter_folder)):
-                    print('\033[32m{} is complete\033[0m'.format(chapter['title']))
-                    continue
-                chapter['pages'] = self.scraper.get_chapter_images(chapter['source'])
-                page_sources = list(map(lambda x: x['source'], chapter['pages']))
-                failed_downloads = io_helper.download_files(page_sources, chapter_folder)
-                for page in chapter['pages']:
-                    if page['source'] not in failed_downloads:
-                        page['saved'] = True
-                    else:
-                        page['saved'] = False
-                if len(failed_downloads) == 0:
-                    io_helper.compress_folder_as_cbz(chapter_folder)
-                    shutil.rmtree(chapter_folder)
-                    print('\033[32m{} is complete\033[0m'.format(chapter['title']))
-                else:
-                    print('\033[33m{} is incomplete\033[0m'.format(chapter['title']))
+            dl_args = (
+                self.cwd,
+                self.scraper.get_name(),
+                self.manga,
+                chapters,
+            )
+            dl_thread = threading.Thread(
+                group=None,
+                target=self.download_chapters_task,
+                args=dl_args
+            )
+            dl_thread.setDaemon(True)
+            dl_thread.start()
+            print('Downloading...')
 
     # def do_list_chapters(self, line: str):
     #     error = 'no manga named "{}"'.format(line)
