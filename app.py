@@ -280,7 +280,7 @@ class MangaDLConsole(cmd.Cmd):
                 status = '\033[92mCompleted\033[0m'
             if pages_count > 0:
                 if pages_saved < pages_count:
-                    status = '\033[93m{}%\033[0m'.format(int(pages_saved / pages_count))
+                    status = '\033[93m{}%\033[0m'.format(int((pages_saved / pages_count) * 100))
                 elif pages_saved == pages_count:
                     status = '\033[92mCompleted\033[0m'
             print('Title : {}'.format(chapter['title']))
