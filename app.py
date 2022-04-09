@@ -169,18 +169,26 @@ class MangaDLConsole(cmd.Cmd):
                     chapter['title']
                 )
                 if os.path.isfile('{}.cbz'.format(chapter_folder)):
+                    chapter['isCompleted'] = True
+                    chapter['pages'] = []
                     # print('\033[32m{} is complete\033[0m'.format(chapter['title']))
                     continue
                 chapter['pages'] = scraper.get_chapter_images(chapter['source'])
                 page_sources = list(map(lambda x: x['source'], chapter['pages']))
-                failed_downloads = io_helper.download_files(page_sources, chapter_folder)
-                for page in chapter['pages']:
-                    page['saved'] = page['source'] not in failed_downloads
-                if len(failed_downloads) == 0:
+                chapter['isCompleted'] = False
+                failed_downloads = 0
+                for url, done in io_helper.download_files(page_sources, chapter_folder):
+                    failed_downloads += 0 if done else 1
+                    idx = page_sources.index(url)
+                    chapter['pages'][idx]['saved'] = done
+                if failed_downloads == 0:
                     io_helper.compress_folder_as_cbz(chapter_folder)
                     shutil.rmtree(chapter_folder)
+                    chapter['isCompleted'] = True
+                    chapter['pages'] = []
                     # print('\033[32m{} is complete\033[0m'.format(chapter['title']))
-                # else:
+                else:
+                    chapter['isCompleted'] = False
                 #     print('\033[33m{} is incomplete\033[0m'.format(chapter['title']))
             except Exception as ex:
                 # log error
