@@ -3,6 +3,7 @@
 '''
 import cmd
 import os
+import re
 import asyncio
 import shlex
 import shutil
@@ -217,14 +218,65 @@ class MangaDLConsole(cmd.Cmd):
             dl_thread.start()
             print('Downloading...')
 
-    # def do_list_chapters(self, line: str):
-    #     error = 'no manga named "{}"'.format(line)
-    #     for manga in self.mangas:
-    #         if manga['title'] == line:
-    #             chapters = manga['chapters']
-    #             error = ''
-    #     if len(error) > 0:
-    #         print('\033[31mError:\033[0m {}'.format(error))
+    def do_list_chapters(self, line: str):
+        '''Lists the chapters of the current manga or a given manga.
+    Usage: list_chapters [manga_title[|.] [start][-end]]
+        '''
+        args = shlex.split(line)
+        manga_title = args[0] if len(args) else self.manga
+        msg = 'no manga named "{}"'.format(manga_title)
+        chapters = []
+        start, end = (0, 0)
+        if manga_title == '.':
+            manga_title = self.manga
+        for manga in self.mangas:
+            if manga['title'] == manga_title:
+                chapters = manga['chapters']
+                msg = ''
+                break
+        if msg:
+            print('\033[31mError:\033[0m {}'.format(msg))
+            return
+        if len(chapters) > 0:
+            start = 0
+            end = len(chapters)
+        else:
+            msg = 'There are no chapters'
+            print('\033[33mInfo:\033[0m {}'.format(msg))
+            return
+        if len(args) > 1:
+            chapters_range = args[1].strip()
+            range_match = re.fullmatch(r'(?P<start>\d+)?(?:-(?P<end>\d+))?', chapters_range)
+            if range_match:
+                if range_match.group('end'):
+                    end_val = int(range_match.group('end'))
+                    if end_val <= end and end_val >= 0:
+                        end = end_val
+                if range_match.group('start'):
+                    start_val = int(range_match.group('start'))
+                    if start_val >= end:
+                        msg = 'Start must be less than end'
+                        print('\033[31mError:\033[0m {}'.format(msg))
+                        return
+                    if start_val < end and start_val >= 0:
+                        start = start_val
+            else:
+                msg = 'Invalid option: {}'.format(args[1])
+                print('\033[31mError:\033[0m {}'.format(msg))
+                return
+        for chapter in chapters[start:end]:
+            pages_count = len(chapter['pages'])
+            pages_saved = len(list(filter(lambda x: x['saved'], chapter['pages'])))
+            status = 'Unknown'
+            if chapter.get('isCompleted', False):
+                status = '\033[92mCompleted\033[0m'
+            if pages_count > 0:
+                if pages_saved < pages_count:
+                    status = '\033[93m{}%\033[0m'.format(int(pages_saved / pages_count))
+                elif pages_saved == pages_count:
+                    status = '\033[92mCompleted\033[0m'
+            print('Title : {}'.format(chapter['title']))
+            print('Status: {}'.format(status))
 
     def do_list_mangas(self, line: str):
         '''Lists all available Mangas.\nUsage: list_mangas
