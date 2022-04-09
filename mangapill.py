@@ -29,6 +29,7 @@ class MangapillScraper(Scraper):
                         '' if chapter.attrs['href'].startswith('/') else '/',
                         chapter.attrs['href']
                     ),
+                    'isCompleted': False,
                     'pages': [],
                 }
             )
