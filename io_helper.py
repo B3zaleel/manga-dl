@@ -40,12 +40,13 @@ def compress_folder_as_cbz(folder_path: str):
         print('\033[31mError:\033[0m Not a folder')
 
 
-def download_files(urls: list, dest_folder: str) -> list:
+def download_files(urls: list, dest_folder: str, status_changed=None) -> list:
     '''Downloads a list of resources to a given folder.
 
     Args:
         urls (list of str): A list of URLs whose contents are to be saved.
         dest_folder (str): The folder where the resources would be saved to.
+        status_changed (Function(url, done)): A status changed callback function.
 
     Returns:
         list: The list of failed downloads.
@@ -63,7 +64,11 @@ def download_files(urls: list, dest_folder: str) -> list:
             )
             with open(file_path, mode='wb') as file:
                 file.write(res)
+            if status_changed:
+                status_changed(url, True)
         except (ConnectionError, OSError) as ex:
             print('\033[33mError:\033[0m {} ({})'.format(ex.args[1], ex.__class__))
             failed_downloads.append(url)
+            if status_changed:
+                status_changed(url, False)
     return failed_downloads
